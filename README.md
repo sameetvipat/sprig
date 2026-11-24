@@ -52,7 +52,7 @@ Sprig the Sprout is the default, with Clawd next in the list. Change pets with *
 
 Sprig isn't on the Marketplace yet. Install it from the latest release:
 
-1. **[Download sprig.vsix](https://github.com/sameetvipat/sprig/releases/latest/download/sprig.vsix)** (always the latest version), or pick a file from the [releases page](https://github.com/sameetvipat/sprig/releases).
+1. **[Download sprig.vsix](https://github.com/sameetvipat/sprig/releases/latest/download/sprig.vsix)** (always the latest version). Older versions are on the [releases page](https://github.com/sameetvipat/sprig/releases).
 2. In VS Code, open Extensions, click **`…`** at the top, choose **Install from VSIX…**, and pick the file.
    Or from a terminal: `code --install-extension sprig.vsix`
 3. Run **Developer: Reload Window**. Sprig appears in the Explorer sidebar.
@@ -63,8 +63,8 @@ To update, install the newer `.vsix` the same way.
 
 ```sh
 git clone https://github.com/sameetvipat/sprig.git && cd sprig
-./build.sh                                          # writes dist/sprig-mindful-pet-<version>.vsix
-code --install-extension dist/sprig-mindful-pet-*.vsix --force
+./build.sh                                # writes dist/sprig.vsix
+code --install-extension dist/sprig.vsix --force
 ```
 
 No dependencies or network access needed: the build only zips the files.
@@ -113,10 +113,10 @@ python3 docs/make-screenshots.py  # regenerate the screenshots (needs Google Chr
 ./build.sh                       # package the extension
 ```
 
-To publish a release, attach both files from `dist/` (the versioned `.vsix` and `sprig.vsix`) so the download button keeps pointing at the newest version:
+To publish a release (the download button always points at the newest one's `sprig.vsix`):
 
 ```sh
-gh release create v<version> dist/sprig-mindful-pet-<version>.vsix dist/sprig.vsix --latest
+gh release create v<version> dist/sprig.vsix --latest
 ```
 
 The extension is plain JavaScript with no dependencies: `extension.js` (timers, sessions, commands) and `media/pet.html` (the panel and pets).
