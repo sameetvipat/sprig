@@ -1,5 +1,9 @@
 # Sprig 🌱
 
+[![Latest release](https://img.shields.io/github/v/release/sameetvipat/sprig?label=release)](https://github.com/sameetvipat/sprig/releases/latest)
+[![License: MIT](https://img.shields.io/github/license/sameetvipat/sprig)](LICENSE)
+![VS Code 1.80+](https://img.shields.io/badge/VS%20Code-1.80%2B-007ACC)
+
 **A mindful coding companion for VS Code.** Set an intention, focus, take real breaks, breathe, and reflect, with a tiny pixel pet keeping you company in the sidebar.
 
 ![Sprig's panel in different moments of a session](docs/screenshots/panel-states.png)
@@ -44,14 +48,24 @@ Sprig the Sprout is the default, with Clawd next in the list. Change pets with *
 
 ## Install
 
-Sprig isn't on the Marketplace. Build and install it from this repo:
+Sprig isn't on the Marketplace yet. Install it from the latest release:
+
+1. Download `sprig-mindful-pet-<version>.vsix` from the [latest release](https://github.com/sameetvipat/sprig/releases/latest).
+2. In VS Code, open Extensions, click **`…`** at the top, choose **Install from VSIX…**, and pick the file.
+   Or from a terminal: `code --install-extension sprig-mindful-pet-<version>.vsix`
+3. Run **Developer: Reload Window**. Sprig appears in the Explorer sidebar.
+
+To update, install the newer `.vsix` the same way.
+
+### Build from source
 
 ```sh
+git clone https://github.com/sameetvipat/sprig.git && cd sprig
 ./build.sh                                          # writes dist/sprig-mindful-pet-<version>.vsix
 code --install-extension dist/sprig-mindful-pet-*.vsix --force
 ```
 
-Then run **Developer: Reload Window**. Sprig appears in the Explorer sidebar.
+No dependencies or network access needed: the build only zips the files.
 
 ## Commands
 
