@@ -1,3 +1,5 @@
+<img src="https://raw.githubusercontent.com/sameetvipat/sprig/main/icon.png" alt="Sprig logo" width="96" align="right">
+
 # Sprig 🌱
 
 [![Latest release](https://img.shields.io/github/v/release/sameetvipat/sprig?label=release)](https://github.com/sameetvipat/sprig/releases/latest)
@@ -8,7 +10,7 @@
 
 **A mindful coding companion for VS Code.** Set an intention, focus, take real breaks, breathe, and reflect, with a tiny pixel pet keeping you company in the sidebar.
 
-![Sprig's panel in different moments of a session](docs/screenshots/panel-states.png)
+![Sprig's panel in different moments of a session](https://raw.githubusercontent.com/sameetvipat/sprig/main/docs/screenshots/panel-states.png)
 
 ## A mindful session
 
@@ -40,13 +42,13 @@ Sprig is built around one loop: **intention → focus → break → reflect.**
 - **Status bar**: `🌱 18m` shows your current focus time. Click it for the Sprig menu.
 - **Private by design**: everything stays on your machine. Sprig makes no network requests.
 
-<img src="docs/screenshots/panel-tall.png" alt="Sprig's full layout in a taller panel" width="300">
+<img src="https://raw.githubusercontent.com/sameetvipat/sprig/main/docs/screenshots/panel-tall.png" alt="Sprig's full layout in a taller panel" width="300">
 
 ## 22 pets
 
 Sprig the Sprout is the default, with Clawd next in the list. Change pets with **Sprig: Choose Pet** (↑/↓ previews each one live in the panel) or double-click the pet.
 
-![All 22 pets](docs/screenshots/pets.png)
+![All 22 pets](https://raw.githubusercontent.com/sameetvipat/sprig/main/docs/screenshots/pets.png)
 
 ## Install
 

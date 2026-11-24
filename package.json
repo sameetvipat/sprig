@@ -2,7 +2,7 @@
   "name": "sprig-mindful-pet",
   "displayName": "Sprig — Mindful Coding Pet",
   "description": "A mindful coding companion: set an intention, focus, take real breaks, breathe, and reflect, with a tiny pixel pet in your sidebar.",
-  "version": "1.7.1",
+  "version": "1.7.2",
   "publisher": "sameet",
   "license": "MIT",
   "engines": {
@@ -172,5 +172,14 @@
         }
       }
     }
+  },
+  "icon": "icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sameetvipat/sprig.git"
+  },
+  "homepage": "https://github.com/sameetvipat/sprig#readme",
+  "bugs": {
+    "url": "https://github.com/sameetvipat/sprig/issues"
   }
 }
