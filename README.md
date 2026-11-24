@@ -101,4 +101,4 @@ The extension is plain JavaScript with no dependencies: `extension.js` (timers, 
 
 ## License
 
-MIT
+[MIT](LICENSE), except the Clawd sprite, which is Anthropic's mascot and isn't covered by it. See [NOTICE](NOTICE).
