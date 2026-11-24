@@ -28,10 +28,14 @@
   button:hover { background: var(--vscode-button-secondaryHoverBackground); }
   button.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
   .breath:empty { display: none; }
-  /* Short panel: pet on the left, stats and buttons stacked on the right. */
+  .intent { margin-top: 6px; text-align: center; font-size: 11px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .9; }
+  .intent:hover { opacity: 1; text-decoration: underline; }
+  .intent.none { color: var(--vscode-textLink-foreground); }
+  /* Short panel: pet on the left; intention, stats and buttons stacked on the right. */
   @media (max-height: 240px) {
-    body { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: 1fr auto;
-      grid-template-areas: "pet stats" "pet buttons"; column-gap: 12px; padding: 8px 10px; }
+    body { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: auto 1fr auto;
+      grid-template-areas: "pet intent" "pet stats" "pet buttons"; column-gap: 12px; padding: 8px 10px; }
+    .intent { grid-area: intent; margin: 2px 0 0; text-align: left; }
     .stage { grid-area: pet; }
     .petname { display: none; }
     /* While breathing, the countdown takes the stats' place. */
@@ -53,6 +57,7 @@
     <canvas id="pet"></canvas>
   </div>
   <div class="petname" id="petName" title="Click to change pet"></div>
+  <div class="intent none" id="intent" title="Start a mindful session">＋ Set an intention</div>
   <div class="breath" id="breath"></div>
   <div class="stats">
     <div><b id="focus">0m</b>focus</div>
@@ -210,6 +215,10 @@ window.addEventListener('message', (e) => {
     document.getElementById('focus').textContent = m.focus;
     document.getElementById('today').textContent = m.today;
     document.getElementById('breaks').textContent = m.breaks;
+    const it = document.getElementById('intent');
+    it.textContent = m.intention ? '🎯 ' + m.intention : '＋ Set an intention';
+    it.title = m.intention ? m.intention + ' (click to change or end the session)' : 'Start a mindful session';
+    it.classList.toggle('none', !m.intention);
     onBreak = m.onBreak;
     const btn = document.getElementById('btnBreak');
     if (onBreak) { mood = 'stretch'; btn.title = 'End break'; btn.textContent = `⏎ ${Math.floor(m.breakLeft/60)}:${String(m.breakLeft%60).padStart(2,'0')}`; }
@@ -223,6 +232,7 @@ cvs.onclick = () => { hopT = Date.now(); fx('💚'); };
 cvs.ondblclick = () => vscode.postMessage({ type: 'choosePet' });
 cvs.title = 'Click to pet · double-click to change pet';
 
+document.getElementById('intent').onclick = () => vscode.postMessage({ type: 'intent' });
 document.getElementById('petName').onclick = () => vscode.postMessage({ type: 'choosePet' });
 setPet('clawd');
 requestAnimationFrame(draw);

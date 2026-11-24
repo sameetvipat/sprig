@@ -24,8 +24,28 @@ const state = {
   todayFocusMs: 0,
   breaksTaken: 0,
   errors: 0,
-  lastCheer: 0
+  lastCheer: 0,
+  session: null,       // { intention, start, focusMs, breaks } while a mindful session runs
+  diskEdits: [],       // recent on-disk edit times, to notice Claude (or a tool) working
+  lastWaitNudge: 0
 };
+
+const BREAK_IDEAS = [
+  'Stand up, roll your shoulders, and look out a window. 🌿',
+  'Walk to the kitchen and back, slowly. Notice your feet. 🚶',
+  'Close your eyes and listen: name three sounds you can hear. 👂',
+  'Stretch your arms overhead, then let them fall. Twice. 🙆',
+  'Get a glass of water and drink it away from the screen. 💧',
+  'Look at something far away for 20 seconds. Let your eyes soften. 👀',
+  'Unclench your jaw, drop your shoulders, breathe out slowly. 🍃'
+];
+const FEELINGS = [
+  { label: '😌 Calm and clear', key: 'calm' },
+  { label: '🙂 Good', key: 'good' },
+  { label: '😐 Okay', key: 'okay' },
+  { label: '😮‍💨 Tired', key: 'tired' },
+  { label: '😣 Stressed', key: 'stressed' }
+];
 
 function cfg(key) {
   return vscode.workspace.getConfiguration('sprig').get(key);
@@ -61,6 +81,8 @@ class PetViewProvider {
         choosePet();
       } else if (msg.type === 'endBreak') {
         endBreak(true);
+      } else if (msg.type === 'intent') {
+        state.session ? sessionMenu() : startSession();
       }
     });
     view.onDidDispose(() => { this.view = undefined; });
@@ -99,7 +121,8 @@ function pushStats() {
     today: fmt(state.todayFocusMs),
     breaks: state.breaksTaken,
     onBreak,
-    breakLeft: onBreak ? Math.ceil((state.onBreakUntil - Date.now()) / 1000) : 0
+    breakLeft: onBreak ? Math.ceil((state.onBreakUntil - Date.now()) / 1000) : 0,
+    intention: state.session ? state.session.intention : ''
   });
   updateStatus();
 }
@@ -113,9 +136,10 @@ function updateStatus() {
   } else {
     const left = Math.max(0, minutes('focusMinutes', 1) * 60000 - state.focusMs);
     statusItem.text = `🌱 ${fmt(state.focusMs)}${isPaused() ? ' $(bell-slash)' : ''}`;
-    statusItem.tooltip = isPaused()
+    const intent = state.session ? `\n🎯 ${state.session.intention}` : '\nNo session yet: click to set an intention';
+    statusItem.tooltip = (isPaused()
       ? `Sprig: reminders paused until ${new Date(state.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      : `Sprig: ${fmt(state.focusMs)} focused · break in ~${Math.ceil(left / 60000)}m (click for options)`;
+      : `Sprig: ${fmt(state.focusMs)} focused · break in ~${Math.ceil(left / 60000)}m (click for options)`) + intent;
   }
 }
 
@@ -123,9 +147,10 @@ function startBreak() {
   if (Date.now() < state.onBreakUntil) return;
   state.onBreakUntil = Date.now() + minutes('breakMinutes', 1) * 60000;
   state.breaksTaken++;
+  if (state.session) { state.session.breaks++; saveSession(); }
   saveDay();
   provider.post({ type: 'mood', mood: 'stretch' });
-  say('Stand up, roll your shoulders, look out a window. I\'ll keep your code warm. 🌿', 'stretch');
+  say(BREAK_IDEAS[Math.floor(Math.random() * BREAK_IDEAS.length)], 'stretch');
   // Tick every second during a break so the countdown is smooth and the break ends on time.
   clearInterval(breakTick);
   breakTick = setInterval(() => (Date.now() >= state.onBreakUntil ? endBreak(false) : pushStats()), 1000);
@@ -139,9 +164,118 @@ function endBreak(early) {
   state.focusMs = 0;
   state.eyeMs = 0;
   state.snoozeUntil = 0;
-  say(early ? 'Welcome back! Set one small intention for this next stretch.' : 'Break\'s over — welcome back. One small intention for the next session?', 'happy');
-  if (!early && cfg('breakNotifications')) vscode.window.showInformationMessage('🌱 Sprig: break\'s over — welcome back!');
   pushStats();
+  const s = state.session;
+  say(s ? `Welcome back. Still on: “${s.intention}”?` : 'Welcome back. What would you like to focus on next?', 'happy');
+  if (early && !s) return;
+  // Coming back is a good moment to re-check the intention.
+  const msg = s ? `🌱 Welcome back. Still working on “${s.intention}”?` : '🌱 Break\'s over. Set an intention for the next stretch?';
+  const buttons = s ? ['Yes, continue', 'New intention', 'End & reflect'] : ['Set intention'];
+  if (!early && !cfg('breakNotifications')) return;
+  vscode.window.showInformationMessage(msg, ...buttons).then((c) => {
+    if (c === 'New intention') changeIntention();
+    else if (c === 'End & reflect') endSession();
+    else if (c === 'Set intention') startSession();
+  });
+}
+
+// ----- Mindful sessions: intention → focus → breaks → reflection -----
+
+function saveSession() {
+  extContext.globalState.update('sprig.session', state.session);
+}
+
+async function askIntention(value) {
+  const text = await vscode.window.showInputBox({
+    title: 'Sprig: set an intention',
+    prompt: 'One small, clear thing you want to do in this session.',
+    placeHolder: 'e.g. Fix the login bug · Write tests for the parser · Read the API docs',
+    value,
+    validateInput: (v) => (v.trim().length > 80 ? 'Keep it short: 80 characters or less.' : undefined)
+  });
+  return text && text.trim();
+}
+
+async function startSession() {
+  if (state.session) return sessionMenu();
+  const intention = await askIntention();
+  if (!intention) return;
+  state.session = { intention, start: Date.now(), focusMs: 0, breaks: 0 };
+  state.focusMs = 0; state.eyeMs = 0; state.snoozeUntil = 0;
+  saveSession();
+  pushStats();
+  provider.post({ type: 'breathe', cycles: 1 }); // one settling breath to begin
+  say(`Let's begin. One breath first, then: “${intention}”. 🌱`, 'calm');
+}
+
+async function changeIntention() {
+  if (!state.session) return startSession();
+  const intention = await askIntention(state.session.intention);
+  if (!intention) return;
+  state.session.intention = intention;
+  saveSession();
+  pushStats();
+  say(`New focus: “${intention}”.`, 'calm');
+}
+
+async function endSession() {
+  const s = state.session;
+  if (!s) return;
+  const done = await vscode.window.showQuickPick(
+    [{ label: '✅ Yes', key: 'yes' }, { label: '🌗 Partly', key: 'partly' }, { label: '🌱 Not yet, and that\'s okay', key: 'no' }],
+    { title: 'Sprig: reflect', placeHolder: `Did you do what you set out to do? “${s.intention}”`, ignoreFocusOut: true }
+  );
+  if (!done) return; // cancelled: the session keeps going
+  const feeling = await vscode.window.showQuickPick(FEELINGS, { title: 'Sprig: reflect', placeHolder: 'How do you feel right now?', ignoreFocusOut: true });
+  const note = await vscode.window.showInputBox({ title: 'Sprig: reflect', prompt: 'One note for future you (optional). What helped, what got in the way?', ignoreFocusOut: true });
+  archiveSession({ done: done.key, feeling: feeling ? feeling.key : null, note: (note || '').trim() });
+  const reply = {
+    yes: 'You did what you set out to do. Let that land for a second. 🌿',
+    partly: 'Progress counts. Tomorrow-you will pick it up from here. 🌗',
+    no: 'Some sessions are for learning what\'s hard. Be kind to yourself. 🌱'
+  }[done.key];
+  say(feeling && (feeling.key === 'tired' || feeling.key === 'stressed') ? `${reply} Maybe a proper rest before the next one.` : reply, 'happy');
+}
+
+function archiveSession(reflection) {
+  const s = state.session;
+  const journal = extContext.globalState.get('sprig.journal', []);
+  journal.push({ ...s, end: Date.now(), ...reflection });
+  extContext.globalState.update('sprig.journal', journal.slice(-200));
+  state.session = null;
+  saveSession();
+  pushStats();
+}
+
+async function sessionMenu() {
+  const s = state.session;
+  if (!s) return startSession();
+  const pick = await vscode.window.showQuickPick(
+    [{ label: '$(edit) Change intention', run: changeIntention }, { label: '$(check) End session & reflect', run: endSession }],
+    { placeHolder: `🎯 ${s.intention} · ${fmt(s.focusMs)} focused · ${s.breaks} breaks` }
+  );
+  if (pick) pick.run();
+}
+
+async function openJournal() {
+  const journal = extContext.globalState.get('sprig.journal', []);
+  const icon = { yes: '✅', partly: '🌗', no: '🌱' };
+  const feel = Object.fromEntries(FEELINGS.map((f) => [f.key, f.label]));
+  const lines = ['# Sprig: mindful coding journal', ''];
+  if (!journal.length) lines.push('_No sessions yet. Start one from the Sprig menu: set an intention, focus, take breaks, then reflect._');
+  let lastDay = '';
+  for (const e of journal.slice().reverse()) {
+    const d = new Date(e.start);
+    const day = d.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    if (day !== lastDay) { lines.push(`## ${day}`, ''); lastDay = day; }
+    const t = (x) => new Date(x).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    lines.push(`### ${icon[e.done] || '·'} ${e.intention}`);
+    lines.push(`${t(e.start)}–${t(e.end)} · ${fmt(e.focusMs)} focused · ${e.breaks} break${e.breaks === 1 ? '' : 's'}${e.feeling ? ` · felt ${feel[e.feeling]}` : ''}`);
+    if (e.note) lines.push('', `> ${e.note}`);
+    lines.push('');
+  }
+  const doc = await vscode.workspace.openTextDocument({ language: 'markdown', content: lines.join('\n') });
+  await vscode.window.showTextDocument(doc, { preview: true });
 }
 
 function suggestBreak() {
@@ -248,14 +382,19 @@ async function showStats() {
 
 async function menu() {
   const onBreak = Date.now() < state.onBreakUntil;
+  const s = state.session;
   const items = [
-    { label: '$(eye) Show pet', run: () => vscode.commands.executeCommand('sprig.petView.focus') },
+    s ? { label: '$(check) End session & reflect', description: `🎯 ${s.intention}`, run: endSession }
+      : { label: '$(target) Start a mindful session…', description: 'set an intention', run: startSession },
+    ...(s ? [{ label: '$(edit) Change intention', run: changeIntention }] : []),
     { label: '$(pulse) Breathe with me (1 min)', run: breathe },
     onBreak ? { label: '$(debug-stop) End break', run: () => endBreak(true) } : { label: '$(coffee) Take a break now', run: startBreak },
     { label: isPaused() ? '$(bell) Resume reminders' : '$(bell-slash) Pause reminders…', run: pause },
+    { label: '$(book) Mindful journal', run: openJournal },
     { label: '$(graph) This week\'s focus', run: showStats },
     { label: '$(refresh) Reset focus timer', run: resetFocus },
-    { label: '$(smiley) Choose pet…', run: choosePet }
+    { label: '$(smiley) Choose pet…', run: choosePet },
+    { label: '$(eye) Show pet', run: () => vscode.commands.executeCommand('sprig.petView.focus') }
   ];
   const pick = await vscode.window.showQuickPick(items, { placeHolder: `Sprig · ${fmt(state.focusMs)} focused · ${fmt(state.todayFocusMs)} today` });
   if (pick) pick.run();
@@ -295,6 +434,7 @@ function onTick() {
     state.focusMs += TICK_MS;
     state.todayFocusMs += TICK_MS;
     state.eyeMs += TICK_MS;
+    if (state.session) { state.session.focusMs += TICK_MS; saveSession(); }
   }
   state.waterMs += TICK_MS;
   saveDay();
@@ -345,7 +485,7 @@ function activate(context) {
   statusItem.show();
   context.subscriptions.push(statusItem);
 
-  let lastPost = 0;
+  let lastPost = 0, lastKeystroke = 0;
   const markActive = () => {
     state.lastTyping = Date.now();
     if (state.lastTyping - lastPost > 400) {
@@ -355,12 +495,24 @@ function activate(context) {
   };
   // Edits made outside the editor (e.g. by Claude Code) only show up on disk. Only works with a folder open.
   const watcher = vscode.workspace.createFileSystemWatcher('**/*');
-  const onDisk = (uri) => { if (!/[\\/](\.git|node_modules|dist|out|build)[\\/]/.test(uri.fsPath)) markActive(); };
+  const onDisk = (uri) => {
+    if (/[\\/](\.git|node_modules|dist|out|build)[\\/]/.test(uri.fsPath)) return;
+    markActive();
+    // A burst of edits you didn't type means Claude (or a tool) is working: a good moment to breathe instead of watching.
+    const now = Date.now();
+    state.diskEdits = state.diskEdits.filter((t) => now - t < 20000).concat(now);
+    const typedRecently = now - lastKeystroke < 10000;
+    if (state.diskEdits.length >= 4 && !typedRecently && now - state.lastWaitNudge > 20 * 60000 && !isPaused() && now >= state.onBreakUntil) {
+      state.lastWaitNudge = now;
+      say('Something\'s working on your code. While it does, try one slow breath: in for 4, out for 6. 🍃', 'calm');
+    }
+  };
   context.subscriptions.push(
     watcher, watcher.onDidChange(onDisk), watcher.onDidCreate(onDisk),
     vscode.workspace.onDidChangeTextDocument((e) => {
       if (e.contentChanges.length === 0) return; // dirty-state flips, not edits
       if (e.document.uri.scheme !== 'file' && e.document.uri.scheme !== 'untitled') return;
+      lastKeystroke = Date.now();
       markActive();
     }),
     vscode.workspace.onDidSaveTextDocument(() => provider.post({ type: 'saved' })),
@@ -379,6 +531,10 @@ function activate(context) {
     vscode.commands.registerCommand('sprig.choosePet', choosePet),
     vscode.commands.registerCommand('sprig.pause', pause),
     vscode.commands.registerCommand('sprig.stats', showStats),
+    vscode.commands.registerCommand('sprig.startSession', startSession),
+    vscode.commands.registerCommand('sprig.endSession', () => (state.session ? endSession() : vscode.window.showInformationMessage('Sprig: no session is running.'))),
+    vscode.commands.registerCommand('sprig.changeIntention', changeIntention),
+    vscode.commands.registerCommand('sprig.journal', openJournal),
     vscode.workspace.onDidChangeConfiguration((ev) => {
       if (ev.affectsConfiguration('sprig.pet')) {
         provider.post({ type: 'pet', id: cfg('pet') });
@@ -390,12 +546,18 @@ function activate(context) {
     vscode.commands.registerCommand('sprig.resetFocus', resetFocus)
   );
 
+  state.session = context.globalState.get('sprig.session') || null;
+  // A session left open for over 16 hours was forgotten: file it in the journal without a reflection.
+  if (state.session && Date.now() - state.session.start > 16 * 3600000) archiveSession({ done: null, feeling: null, note: '' });
+
   tick = setInterval(onTick, TICK_MS);
   context.subscriptions.push({ dispose: () => { clearInterval(tick); clearInterval(breakTick); } });
 
   const h = new Date().getHours();
   const greet = h < 12 ? 'Good morning!' : h < 17 ? 'Good afternoon!' : 'Good evening!';
-  say(`${greet} Take one slow breath before you start. 🌱`, 'happy');
+  say(state.session
+    ? `${greet} Picking up where you left off: “${state.session.intention}”.`
+    : `${greet} Take one slow breath, then set an intention to begin. 🌱`, 'happy');
   updateStatus();
 }
 

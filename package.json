@@ -1,8 +1,8 @@
 {
   "name": "sprig-mindful-pet",
   "displayName": "Sprig — Mindful Coding Pet",
-  "description": "A tiny pixel pet that lives in your sidebar, reacts while you code, and gently nudges you to breathe, rest your eyes, drink water and take breaks.",
-  "version": "1.6.1",
+  "description": "A mindful coding companion: set an intention, focus, take real breaks, breathe, and reflect, with a tiny pixel pet in your sidebar.",
+  "version": "1.7.0",
   "publisher": "sameet",
   "license": "MIT",
   "engines": {
@@ -14,9 +14,12 @@
   "keywords": [
     "pet",
     "mindful",
+    "mindfulness",
+    "focus",
     "pomodoro",
     "break",
-    "wellbeing"
+    "wellbeing",
+    "journal"
   ],
   "main": "./extension.js",
   "activationEvents": [
@@ -64,6 +67,22 @@
       {
         "command": "sprig.stats",
         "title": "Sprig: Show This Week's Focus"
+      },
+      {
+        "command": "sprig.startSession",
+        "title": "Sprig: Start Mindful Session"
+      },
+      {
+        "command": "sprig.changeIntention",
+        "title": "Sprig: Change Intention"
+      },
+      {
+        "command": "sprig.endSession",
+        "title": "Sprig: End Session & Reflect"
+      },
+      {
+        "command": "sprig.journal",
+        "title": "Sprig: Open Mindful Journal"
       }
     ],
     "configuration": {
