@@ -53,7 +53,7 @@ tmp = tempfile.mkdtemp()
 for name, msgs in STATES.items():
     posts = "".join(f"postMessage({json.dumps(m, ensure_ascii=False)},'*');" for m in msgs if m["type"] != "say")
     posts += "".join(f"setTimeout(()=>postMessage({json.dumps(m, ensure_ascii=False)},'*'),8500);" for m in msgs if m["type"] == "say")
-    script = f"<script>setTimeout(()=>{{postMessage({{type:'pet',id:'clawd'}},'*');{posts}}},50);</script></body>"
+    script = f"<script>setTimeout(()=>{{postMessage({{type:'pet',id:'sprout'}},'*');{posts}}},50);</script></body>"
     open(os.path.join(tmp, name + ".html"), "w").write(panel.replace("</body>", script))
 
 # 1. Compact panel states (the default sidebar size)
@@ -71,7 +71,7 @@ shoot("tall.html", "panel-tall.png", 298, 386)
 gallery = f"""<html><head>{STYLE}<style>.g{{display:grid;grid-template-columns:repeat(6,120px);gap:10px;padding:18px}}
 .p{{background:#181818;border:1px solid #2b2b2b;border-radius:8px;padding:10px 0 8px;text-align:center}}canvas{{image-rendering:pixelated}}</style></head>
 <body><div class="g" id="g"></div><script>const S={json.dumps(sprites, ensure_ascii=False)};
-const order=['clawd',...Object.keys(S).filter(k=>k!=='clawd')];
+const order=['sprout','clawd',...Object.keys(S).filter(k=>k!=='sprout'&&k!=='clawd')];
 for(const k of order){{const s=S[k],d=document.createElement('div');d.className='p';const c=document.createElement('canvas');c.width=c.height=80;
 const x=c.getContext('2d');s.grid.forEach((r,i)=>[...r].forEach((ch,j)=>{{if(ch!=='.'){{x.fillStyle=s.pal[ch];x.fillRect(j*5,i*5,5,5);}}}}));
 d.appendChild(c);const n=document.createElement('div');n.textContent=s.name;n.style.marginTop='6px';d.appendChild(n);g.appendChild(d);}}</script></body></html>"""

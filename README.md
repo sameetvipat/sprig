@@ -38,7 +38,7 @@ Sprig is built around one loop: **intention → focus → break → reflect.**
 
 ## 22 pets
 
-Clawd is the default. Change pets with **Sprig: Choose Pet** (↑/↓ previews each one live in the panel) or double-click the pet.
+Sprig the Sprout is the default, with Clawd next in the list. Change pets with **Sprig: Choose Pet** (↑/↓ previews each one live in the panel) or double-click the pet.
 
 ![All 22 pets](docs/screenshots/pets.png)
 
@@ -76,7 +76,7 @@ Open the Command Palette (Cmd/Ctrl+Shift+P) and type "Sprig":
 
 | Setting | Default | |
 |---|---|---|
-| `sprig.pet` | `clawd` | Which pet keeps you company |
+| `sprig.pet` | `sprout` | Which pet keeps you company |
 | `sprig.focusMinutes` | `25` | Minutes of active coding before a break is suggested |
 | `sprig.breakMinutes` | `5` | Length of a break |
 | `sprig.eyeReminderMinutes` | `20` | 20-20-20 eye rest interval (0 turns it off) |

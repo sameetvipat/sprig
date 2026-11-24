@@ -295,6 +295,7 @@ function suggestBreak() {
 
 const PETS = [
   { id: 'sprout', label: '🌱 Sprig the Sprout' },
+  { id: 'clawd', label: '🧡 Clawd' },
   { id: 'cat', label: '🐱 Miso the Cat' },
   { id: 'ghost', label: '👻 Boo the Ghost' },
   { id: 'robot', label: '🤖 Bolt the Robot' },
@@ -314,8 +315,7 @@ const PETS = [
   { id: 'hamster', label: '🐹 Nugget the Hamster' },
   { id: 'owl', label: '🦉 Hoot the Owl' },
   { id: 'slime', label: '💧 Gloop the Slime' },
-  { id: 'bee', label: '🐝 Buzz the Bee' },
-  { id: 'clawd', label: '🧡 Clawd' }
+  { id: 'bee', label: '🐝 Buzz the Bee' }
 ];
 
 async function choosePet() {

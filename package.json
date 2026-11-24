@@ -2,7 +2,7 @@
   "name": "sprig-mindful-pet",
   "displayName": "Sprig — Mindful Coding Pet",
   "description": "A mindful coding companion: set an intention, focus, take real breaks, breathe, and reflect, with a tiny pixel pet in your sidebar.",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "publisher": "sameet",
   "license": "MIT",
   "engines": {
@@ -90,9 +90,10 @@
       "properties": {
         "sprig.pet": {
           "type": "string",
-          "default": "clawd",
+          "default": "sprout",
           "enum": [
             "sprout",
+            "clawd",
             "cat",
             "ghost",
             "robot",
@@ -112,11 +113,11 @@
             "hamster",
             "owl",
             "slime",
-            "bee",
-            "clawd"
+            "bee"
           ],
           "enumDescriptions": [
             "Sprig the Sprout",
+            "Clawd",
             "Miso the Cat",
             "Boo the Ghost",
             "Bolt the Robot",
@@ -136,8 +137,7 @@
             "Nugget the Hamster",
             "Hoot the Owl",
             "Gloop the Slime",
-            "Buzz the Bee",
-            "Clawd"
+            "Buzz the Bee"
           ],
           "description": "Which pet keeps you company."
         },
