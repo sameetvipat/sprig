@@ -9,6 +9,9 @@ global.Date = class extends RealDate { constructor(...a) { super(...(a.length ? 
 const intervals = [];
 global.setInterval = (fn, ms) => { const i = { fn, ms, on: true }; intervals.push(i); return i; };
 global.clearInterval = (i) => { if (i) i.on = false; };
+const timeouts = [];
+global.setTimeout = (fn, ms) => { timeouts.push({ fn, ms }); return timeouts.length; };
+global.clearTimeout = () => {};
 
 const posts = [], infos = [], cmds = {}, store = {}, docs = [], handlers = {};
 const ev = (name) => (fn) => { (handlers[name] = handlers[name] || []).push(fn); return { dispose() {} }; };
@@ -24,7 +27,7 @@ const vscode = {
     showTextDocument: async () => {},
   },
   workspace: {
-    getConfiguration: () => ({ get: (k) => ({ pet: 'clawd', focusMinutes: 25, breakMinutes: 5, eyeReminderMinutes: 20, hydrationMinutes: 45, breakNotifications: true })[k] }),
+    getConfiguration: () => ({ get: (k) => ({ pet: 'clawd', focusMinutes: 25, breakMinutes: 5, eyeReminderMinutes: 20, hydrationMinutes: 45, breakNotifications: true, checkForUpdates: false })[k] }),
     createFileSystemWatcher: () => ({ onDidChange: ev('fsChange'), onDidCreate: ev('fsCreate'), dispose() {} }),
     onDidChangeTextDocument: ev('text'), onDidSaveTextDocument: ev('save'), onDidChangeConfiguration: ev('cfg'),
     openTextDocument: async (o) => { docs.push(o.content); return {}; },
@@ -106,5 +109,10 @@ const advance = (ms, typing) => { for (let t = 0; t < ms; t += 15000) { now += 1
   assert.equal(store['sprig.today'].focusMs, 0, 'today reset');
   await cmds['sprig.stats'](); await cmds['sprig.menu']();
   ext.deactivate();
+  // 9. update check is scheduled after startup, and version comparison is numeric
+  assert(timeouts.some((t) => t.ms === 30000), 'update check scheduled');
+  const { newer } = require(path.join(root, 'updater.js'));
+  assert(newer('1.0.1', '1.0.0') && newer('v1.10.0', '1.9.9') && newer('2.0', '1.99.99'));
+  assert(!newer('1.0.0', '1.0.0') && !newer('1.0.0', '1.0.1') && !newer('v1.2.9', '1.2.10'));
   console.log('all smoke checks passed');
 })().catch((e) => { console.error(e); process.exit(1); });

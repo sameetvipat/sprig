@@ -40,7 +40,8 @@ Sprig is built around one loop: **intention → focus → break → reflect.**
 - **Celebrates fixed errors**: the pet cheers when the last error in your files is gone.
 - **Fits any panel**: the pet scales with the panel. Short panels switch to a compact side-by-side layout; taller ones get the full layout.
 - **Status bar**: `🌱 18m` shows your current focus time. Click it for the Sprig menu.
-- **Private by design**: everything stays on your machine. Sprig makes no network requests.
+- **Updates itself from GitHub**: once a day Sprig checks for a newer release and offers to install it with one click.
+- **Private by design**: your sessions, journal and stats stay on your machine. The only network request is the daily update check to GitHub, which sends nothing about you.
 
 <img src="https://raw.githubusercontent.com/sameetvipat/sprig/main/docs/screenshots/panel-tall.png" alt="Sprig's full layout in a taller panel" width="300">
 
@@ -61,7 +62,7 @@ Sprig is distributed only here on GitHub. It isn't on the VS Code Marketplace or
 
 Editors built on VS Code, such as Cursor and VSCodium, install the same file through their own **Install from VSIX…** option.
 
-**Updating:** because Sprig doesn't come from a store, your editor won't update it automatically. To hear about new versions, click **Watch → Custom → Releases** at the top of this repo, then install the new `sprig.vsix` the same way. Your settings, journal and stats are kept.
+**Updating:** your editor's own Auto Update only works for store extensions, so Sprig updates itself. Once a day it checks this repo's latest release; when there's a newer one you get a notification with **Update**, **What's new** and **Later**. Click **Update** and Sprig downloads and installs it, then asks you to reload. You can also run **Sprig: Check for Updates** any time, or turn the daily check off with `sprig.checkForUpdates`. Your settings, journal and stats are kept.
 
 ## Commands
 
@@ -81,6 +82,7 @@ Open the Command Palette (Cmd/Ctrl+Shift+P) and type "Sprig":
 | Sprig: Choose Pet | Pick a pet with live preview |
 | Sprig: Reset Focus Timer | Start the focus count from zero |
 | Sprig: Show Pet | Reveal the panel |
+| Sprig: Check for Updates | Look for a newer release on GitHub now |
 
 ## Settings
 
@@ -92,6 +94,7 @@ Open the Command Palette (Cmd/Ctrl+Shift+P) and type "Sprig":
 | `sprig.eyeReminderMinutes` | `20` | 20-20-20 eye rest interval (0 turns it off) |
 | `sprig.hydrationMinutes` | `45` | Water reminder interval (0 turns it off) |
 | `sprig.breakNotifications` | `true` | Also show break suggestions and "break's over" as VS Code notifications |
+| `sprig.checkForUpdates` | `true` | Check GitHub once a day for a newer release and offer to install it |
 
 ## Good to know
 

@@ -1,6 +1,7 @@
 const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
+const updater = require('./updater');
 
 const ACTIVE_WINDOW_MS = 2 * 60 * 1000; // a minute counts as "focused" if you typed in the last 2 min
 const TICK_MS = 15000;
@@ -394,7 +395,8 @@ async function menu() {
     { label: '$(graph) This week\'s focus', run: showStats },
     { label: '$(refresh) Reset focus timer', run: resetFocus },
     { label: '$(smiley) Choose pet…', run: choosePet },
-    { label: '$(eye) Show pet', run: () => vscode.commands.executeCommand('sprig.petView.focus') }
+    { label: '$(eye) Show pet', run: () => vscode.commands.executeCommand('sprig.petView.focus') },
+    { label: '$(sync) Check for updates', run: () => updater.check(extContext, { manual: true }) }
   ];
   const pick = await vscode.window.showQuickPick(items, { placeHolder: `Sprig · ${fmt(state.focusMs)} focused · ${fmt(state.todayFocusMs)} today` });
   if (pick) pick.run();
@@ -543,8 +545,12 @@ function activate(context) {
       if (ev.affectsConfiguration('sprig')) updateStatus();
     }),
     vscode.commands.registerCommand('sprig.startBreak', startBreak),
-    vscode.commands.registerCommand('sprig.resetFocus', resetFocus)
+    vscode.commands.registerCommand('sprig.resetFocus', resetFocus),
+    vscode.commands.registerCommand('sprig.checkForUpdates', () => updater.check(context, { manual: true }))
   );
+  // Check GitHub for a newer release a little after startup (at most once a day), so it never slows VS Code down.
+  const updateTimer = setTimeout(() => updater.check(context), 30000);
+  context.subscriptions.push({ dispose: () => clearTimeout(updateTimer) });
 
   state.session = context.globalState.get('sprig.session') || null;
   // A session left open for over 16 hours was forgotten: file it in the journal without a reflection.

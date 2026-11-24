@@ -83,6 +83,10 @@
       {
         "command": "sprig.journal",
         "title": "Sprig: Open Mindful Journal"
+      },
+      {
+        "command": "sprig.checkForUpdates",
+        "title": "Sprig: Check for Updates"
       }
     ],
     "configuration": {
@@ -169,6 +173,11 @@
           "type": "boolean",
           "default": true,
           "description": "Show a VS Code notification when it's time for a break and when a break ends (otherwise Sprig only says it in the sidebar)."
+        },
+        "sprig.checkForUpdates": {
+          "type": "boolean",
+          "default": true,
+          "description": "Once a day, ask GitHub whether a newer Sprig release exists and offer to install it. Nothing is installed without your click."
         }
       }
     }
