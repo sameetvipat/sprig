@@ -63,16 +63,6 @@ Editors built on VS Code, such as Cursor and VSCodium, install the same file thr
 
 **Updating:** because Sprig doesn't come from a store, your editor won't update it automatically. To hear about new versions, click **Watch → Custom → Releases** at the top of this repo, then install the new `sprig.vsix` the same way. Your settings, journal and stats are kept.
 
-### Build from source
-
-```sh
-git clone https://github.com/sameetvipat/sprig.git && cd sprig
-./build.sh                                # writes dist/sprig.vsix
-code --install-extension dist/sprig.vsix --force
-```
-
-No dependencies or network access needed: the build only zips the files.
-
 ## Commands
 
 Open the Command Palette (Cmd/Ctrl+Shift+P) and type "Sprig":
