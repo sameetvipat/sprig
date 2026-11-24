@@ -109,22 +109,6 @@ Open the Command Palette (Cmd/Ctrl+Shift+P) and type "Sprig":
 - If you use several VS Code windows at once, each keeps its own counts.
 - Clawd is Anthropic's Claude Code mascot, redrawn here as unofficial fan art. It isn't covered by the MIT license; see [NOTICE](NOTICE).
 
-## Development
-
-```sh
-node test/smoke.js               # logic checks against a fake VS Code API
-python3 docs/make-screenshots.py  # regenerate the screenshots (needs Google Chrome)
-./build.sh                       # package the extension
-```
-
-To publish a release (the download button always points at the newest one's `sprig.vsix`):
-
-```sh
-gh release create v<version> dist/sprig.vsix --latest
-```
-
-The extension is plain JavaScript with no dependencies: `extension.js` (timers, sessions, commands) and `media/pet.html` (the panel and pets).
-
 ## License
 
 [MIT](LICENSE), except the Clawd sprite, which is Anthropic's mascot and isn't covered by it. See [NOTICE](NOTICE).
