@@ -87,7 +87,7 @@ Open the Command Palette (Cmd/Ctrl+Shift+P) and type "Sprig":
 
 - Claude's edits only count as activity when a **folder is open** in VS Code. Changes in `.git`, `node_modules`, `dist`, `out` and `build` are ignored.
 - If you use several VS Code windows at once, each keeps its own counts.
-- Clawd is Anthropic's Claude Code mascot, redrawn here for personal use. Keep it out of any public release.
+- Clawd is Anthropic's Claude Code mascot, redrawn here as unofficial fan art. It isn't covered by the MIT license; see [NOTICE](NOTICE).
 
 ## Development
 
