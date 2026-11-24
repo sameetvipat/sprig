@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/github/license/sameetvipat/sprig)](LICENSE)
 ![VS Code 1.80+](https://img.shields.io/badge/VS%20Code-1.80%2B-007ACC)
 
+[![Download sprig.vsix](https://img.shields.io/badge/Download-sprig.vsix-2ea44f?style=for-the-badge&logo=github)](https://github.com/sameetvipat/sprig/releases/latest/download/sprig.vsix)
+
 **A mindful coding companion for VS Code.** Set an intention, focus, take real breaks, breathe, and reflect, with a tiny pixel pet keeping you company in the sidebar.
 
 ![Sprig's panel in different moments of a session](docs/screenshots/panel-states.png)
@@ -50,9 +52,9 @@ Sprig the Sprout is the default, with Clawd next in the list. Change pets with *
 
 Sprig isn't on the Marketplace yet. Install it from the latest release:
 
-1. Download `sprig-mindful-pet-<version>.vsix` from the [latest release](https://github.com/sameetvipat/sprig/releases/latest).
+1. **[Download sprig.vsix](https://github.com/sameetvipat/sprig/releases/latest/download/sprig.vsix)** (always the latest version), or pick a file from the [releases page](https://github.com/sameetvipat/sprig/releases).
 2. In VS Code, open Extensions, click **`…`** at the top, choose **Install from VSIX…**, and pick the file.
-   Or from a terminal: `code --install-extension sprig-mindful-pet-<version>.vsix`
+   Or from a terminal: `code --install-extension sprig.vsix`
 3. Run **Developer: Reload Window**. Sprig appears in the Explorer sidebar.
 
 To update, install the newer `.vsix` the same way.
@@ -109,6 +111,12 @@ Open the Command Palette (Cmd/Ctrl+Shift+P) and type "Sprig":
 node test/smoke.js               # logic checks against a fake VS Code API
 python3 docs/make-screenshots.py  # regenerate the screenshots (needs Google Chrome)
 ./build.sh                       # package the extension
+```
+
+To publish a release, attach both files from `dist/` (the versioned `.vsix` and `sprig.vsix`) so the download button keeps pointing at the newest version:
+
+```sh
+gh release create v<version> dist/sprig-mindful-pet-<version>.vsix dist/sprig.vsix --latest
 ```
 
 The extension is plain JavaScript with no dependencies: `extension.js` (timers, sessions, commands) and `media/pet.html` (the panel and pets).

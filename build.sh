@@ -17,4 +17,5 @@ OUT="$PWD/dist/sprig-mindful-pet-$V.vsix"
 rm -f "$OUT"
 (cd "$T" && zip -qX "$OUT" '[Content_Types].xml' extension.vsixmanifest extension/package.json extension/extension.js extension/readme.md extension/LICENSE.txt extension/NOTICE.txt extension/media/pet.html extension/docs/screenshots/*.png)
 rm -rf "$T"
+cp "$OUT" dist/sprig.vsix # stable name for the README download button
 echo "$OUT"
