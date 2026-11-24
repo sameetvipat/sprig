@@ -1,0 +1,157 @@
+{
+  "name": "sprig-mindful-pet",
+  "displayName": "Sprig — Mindful Coding Pet",
+  "description": "A tiny pixel pet that lives in your sidebar, reacts while you code, and gently nudges you to breathe, rest your eyes, drink water and take breaks.",
+  "version": "1.6.1",
+  "publisher": "sameet",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "pet",
+    "mindful",
+    "pomodoro",
+    "break",
+    "wellbeing"
+  ],
+  "main": "./extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "type": "webview",
+          "id": "sprig.petView",
+          "name": "Sprig 🌱"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "sprig.show",
+        "title": "Sprig: Show Pet"
+      },
+      {
+        "command": "sprig.choosePet",
+        "title": "Sprig: Choose Pet"
+      },
+      {
+        "command": "sprig.breathe",
+        "title": "Sprig: Breathe With Me (1 min)"
+      },
+      {
+        "command": "sprig.startBreak",
+        "title": "Sprig: Start a Break Now"
+      },
+      {
+        "command": "sprig.resetFocus",
+        "title": "Sprig: Reset Focus Timer"
+      },
+      {
+        "command": "sprig.menu",
+        "title": "Sprig: Open Menu"
+      },
+      {
+        "command": "sprig.pause",
+        "title": "Sprig: Pause Reminders…"
+      },
+      {
+        "command": "sprig.stats",
+        "title": "Sprig: Show This Week's Focus"
+      }
+    ],
+    "configuration": {
+      "title": "Sprig",
+      "properties": {
+        "sprig.pet": {
+          "type": "string",
+          "default": "clawd",
+          "enum": [
+            "sprout",
+            "cat",
+            "ghost",
+            "robot",
+            "frog",
+            "penguin",
+            "mug",
+            "alien",
+            "computer",
+            "bunny",
+            "fox",
+            "axolotl",
+            "panda",
+            "duck",
+            "octopus",
+            "dragon",
+            "mushroom",
+            "hamster",
+            "owl",
+            "slime",
+            "bee",
+            "clawd"
+          ],
+          "enumDescriptions": [
+            "Sprig the Sprout",
+            "Miso the Cat",
+            "Boo the Ghost",
+            "Bolt the Robot",
+            "Pip the Frog",
+            "Waddle the Penguin",
+            "Bean the Coffee Mug",
+            "Zib the Alien",
+            "Byte the Computer",
+            "Mochi the Bunny",
+            "Ember the Fox",
+            "Lumi the Axolotl",
+            "Bao the Panda",
+            "Puddle the Duckling",
+            "Inky the Octopus",
+            "Cinder the Dragon",
+            "Morel the Mushroom",
+            "Nugget the Hamster",
+            "Hoot the Owl",
+            "Gloop the Slime",
+            "Buzz the Bee",
+            "Clawd"
+          ],
+          "description": "Which pet keeps you company."
+        },
+        "sprig.focusMinutes": {
+          "type": "number",
+          "default": 25,
+          "description": "Minutes of active coding before Sprig suggests a break.",
+          "minimum": 1
+        },
+        "sprig.breakMinutes": {
+          "type": "number",
+          "default": 5,
+          "description": "Length of a break in minutes.",
+          "minimum": 1
+        },
+        "sprig.eyeReminderMinutes": {
+          "type": "number",
+          "default": 20,
+          "description": "20-20-20 eye rest reminder interval (minutes of active coding). 0 to disable.",
+          "minimum": 0
+        },
+        "sprig.hydrationMinutes": {
+          "type": "number",
+          "default": 45,
+          "description": "Water reminder interval (minutes). 0 to disable.",
+          "minimum": 0
+        },
+        "sprig.breakNotifications": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a VS Code notification when it's time for a break and when a break ends (otherwise Sprig only says it in the sidebar)."
+        }
+      }
+    }
+  }
+}

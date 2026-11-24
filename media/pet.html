@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{csp}} 'unsafe-inline'; script-src 'nonce-{{nonce}}';">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  html, body { height: 100%; }
+  body { margin: 0; padding: 8px 10px 12px; box-sizing: border-box; display: flex; flex-direction: column; font-family: var(--vscode-font-family); font-size: 12px; color: var(--vscode-foreground); user-select: none; }
+  body > * { flex: none; }
+  html, body { overflow: hidden; }
+  .stage { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
+  canvas { image-rendering: pixelated; }
+  .bubble { position: absolute; top: 0; left: 50%; transform: translateX(-50%); max-width: 92%; padding: 6px 9px; border-radius: 10px;
+    background: var(--vscode-editorWidget-background); border: 1px solid var(--vscode-editorWidget-border, #555);
+    line-height: 1.35; text-align: center; opacity: 0; transition: opacity .4s; pointer-events: none; }
+  .bubble.show { opacity: 1; }
+  .fx { position: absolute; font-size: 14px; animation: float 1.6s ease-out forwards; pointer-events: none; }
+  @keyframes float { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-40px); } }
+  .petname { text-align:center; opacity:.7; font-size:11px; cursor:pointer; margin-top:2px; }
+  .petname:hover { opacity:1; text-decoration: underline; }
+  .breath { text-align: center; height: 18px; margin-top: 4px; font-weight: 600; letter-spacing: .5px; color: var(--vscode-textLink-foreground); }
+  .stats { display: flex; justify-content: space-around; margin: 8px 0; opacity: .85; }
+  .stats div { text-align: center; } .stats b { display: block; font-size: 14px; }
+  .row { display: flex; gap: 6px; }
+  button { flex: 1; padding: 5px 4px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;
+    background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+  button:hover { background: var(--vscode-button-secondaryHoverBackground); }
+  button.primary { background: var(--vscode-button-background); color: var(--vscode-button-foreground); }
+  .breath:empty { display: none; }
+  /* Short panel: pet on the left, stats and buttons stacked on the right. */
+  @media (max-height: 240px) {
+    body { display: grid; grid-template-columns: 1.15fr 1fr; grid-template-rows: 1fr auto;
+      grid-template-areas: "pet stats" "pet buttons"; column-gap: 12px; padding: 8px 10px; }
+    .stage { grid-area: pet; }
+    .petname { display: none; }
+    /* While breathing, the countdown takes the stats' place. */
+    .breath { grid-area: stats; height: auto; margin: 0 0 6px; align-self: center; text-align: left; font-size: 12px; line-height: 1.4; }
+    .breath:not(:empty) + .stats { display: none; }
+    .stats { grid-area: stats; margin: 0 0 8px; flex-direction: column; justify-content: center; gap: 4px; font-size: 11px; }
+    .stats div { text-align: left; opacity: .75; }
+    .stats b { display: inline; font-size: 13px; margin-right: 4px; opacity: 1; }
+    .row { grid-area: buttons; gap: 6px; }
+    button { padding: 4px; font-size: 13px; white-space: nowrap; }
+    .lbl { display: none; }
+    .bubble { position: fixed; top: 6px; left: 8px; right: 8px; transform: none; max-width: none; font-size: 11px; padding: 4px 8px; line-height: 1.3; z-index: 1; }
+  }
+</style>
+</head>
+<body>
+  <div class="stage" id="stage">
+    <div class="bubble" id="bubble"></div>
+    <canvas id="pet"></canvas>
+  </div>
+  <div class="petname" id="petName" title="Click to change pet"></div>
+  <div class="breath" id="breath"></div>
+  <div class="stats">
+    <div><b id="focus">0m</b>focus</div>
+    <div><b id="today">0m</b>today</div>
+    <div><b id="breaks">0</b>breaks</div>
+  </div>
+  <div class="row">
+    <button id="btnBreathe" title="Breathe with me (1 min)">🍃<span class="lbl"> Breathe</span></button>
+    <button id="btnBreak" class="primary" title="Take a break">☕<span class="lbl"> Break</span></button>
+  </div>
+
+<script nonce="{{nonce}}">
+const vscode = acquireVsCodeApi();
+const cvs = document.getElementById('pet');
+const ctx = cvs.getContext('2d');
+const bubble = document.getElementById('bubble');
+const breathEl = document.getElementById('breath');
+const stage = document.getElementById('stage');
+
+// Original pixel pets. 16x16 grids, one character per pixel.
+const SPRITES = {"sprout": {"name": "Sprig the Sprout", "lid": "b", "sway": 4, "pal": {"o": "#2f4a35", "b": "#9ccc8a", "h": "#cfe9bf", "e": "#2f4a35", "c": "#f2a7a0", "m": "#2f4a35", "l": "#5fa86a", "s": "#4b7f52"}, "grid": ["......ll........", ".....llll.......", "......lls.......", "........s.......", "....oooooooo....", "...obbbbbbbbo...", "..obhhbbbbbbbo..", "..obhbbbbbbbbo..", ".obbbebbbbebbbo.", ".obbbebbbbebbbo.", ".obccbbbbbbccbo.", ".obbbbbmmbbbbbo.", ".obbbbbbbbbbbbo.", "..obbbbbbbbbbo..", "...oobbbbbboo...", "....oo....oo...."]}, "cat": {"name": "Miso the Cat", "lid": "b", "sway": 3, "pal": {"o": "#3b2a20", "b": "#f0a65a", "h": "#f7c993", "p": "#f2a7a0", "e": "#3b2a20", "c": "#f2a7a0", "m": "#3b2a20", "k": "#7a5a44", "t": "#d98a3e"}, "grid": ["................", "..oo........oo..", "..opo......opo..", "..obpoooooopbo..", "..obbbbbbbbbbo..", ".obhbbbbbbbbbbo.", ".obbbebbbbebbbo.", ".obbbebbbbebbbo.", "kobcbbbmmbbbcbok", ".obbbbbbbbbbbbo.", "..obttbbbbttbo..", "..obbbbbbbbbbo..", "..obbbbbbbbbbo.o", "..obbobbbbobbo.o", "...oo.oooo.oo.o.", "................"]}, "ghost": {"name": "Boo the Ghost", "lid": "b", "sway": 0, "pal": {"o": "#4a4466", "b": "#eceaf7", "h": "#ffffff", "e": "#2d2840", "c": "#f5b8c8", "m": "#2d2840"}, "grid": ["................", "................", ".....oooooo.....", "....obbbbbbo....", "...obhbbbbbbo...", "..obhbbbbbbbbo..", "..obbebbbbebbo..", "..obbebbbbebbo..", "..obcbbbbbbcbo..", "..obbbbmmbbbbo..", "..obbbbbbbbbbo..", "..obbbbbbbbbbo..", "..obbbbbbbbbbo..", "..obbobbobbobbo.", "..oo.oo.oo.oo...", "................"]}, "robot": {"name": "Bolt the Robot", "lid": "b", "sway": 2, "pal": {"o": "#2b3440", "b": "#a9bccf", "h": "#d5e2ee", "e": "#38e0c0", "a": "#ff6b6b", "s": "#6d7f91", "c": "#ffd166", "m": "#2b3440", "g": "#6d7f91"}, "grid": [".......a........", ".......s........", "...oooooooooo...", "..obhhbbbbbbbo..", "..obhbbbbbbbbo..", "..obbeebbeebbo..", "..obbeebbeebbo..", "..obbbbbbbbbbo..", "..obbbmmmmbbbo..", "...oooooooooo...", "..ooggggggggoo..", "..ogoggcacgogo..", "..ogoggggggogo..", "....oooooooo....", ".....oo..oo.....", "....ooo..ooo...."]}, "frog": {"name": "Pip the Frog", "lid": "b", "sway": 0, "pal": {"o": "#23402a", "b": "#7cc46a", "h": "#a8dc94", "w": "#ffffff", "e": "#23402a", "c": "#f2a7a0", "m": "#23402a", "y": "#d8eeb0"}, "grid": ["................", "................", "..oooo....oooo..", ".oweewo..oweewo.", ".oweewo..oweewo.", ".obbbbobbobbbbo.", ".obbbbbbbbbbbbo.", ".obhbbbbbbbbbbo.", ".obcbbbbbbbbcbo.", ".obbbmmmmmmbbbo.", "..obbbbbbbbbbo..", "..obyyyyyyyybo..", ".obbyyyyyyyybbo.", ".obbbbbbbbbbbbo.", "oobboooooooobboo", "................"]}, "penguin": {"name": "Waddle the Penguin", "lid": "w", "sway": 0, "pal": {"o": "#1d2433", "d": "#3b4a66", "w": "#f5f7fb", "e": "#1d2433", "c": "#f5b8c8", "y": "#f5a623", "m": "#1d2433"}, "grid": ["................", ".....oooooo.....", "....oddddddo....", "...oddddddddo...", "...odwwddwwdo...", "...odwewwewdo...", "...odwewwewdo...", "...odcwyywcdo...", "..oddwwmmwwddo..", "..odwwwwwwwwdo..", ".oddwwwwwwwwddo.", ".oddwwwwwwwwddo.", "..odwwwwwwwwdo..", "...odwwwwwwdo...", "....oyyoooyyo...", "................"]}, "mug": {"name": "Bean the Coffee Mug", "lid": "b", "sway": 4, "pal": {"o": "#4a2c22", "b": "#f3e6d6", "h": "#ffffff", "e": "#4a2c22", "c": "#f2a7a0", "m": "#4a2c22", "k": "#7a4a33", "s": "#c9c2bb"}, "grid": ["....s...s.......", ".....s...s......", "....s...s.......", ".....s...s......", "..oooooooooo....", "..okkkkkkkko....", "..obhbbbbbbooo..", "..obhbbbbbbo.o..", "..obebbbbebo.o..", "..obebbbbebo.o..", "..obcbmmbcbo.o..", "..obbbbbbbbooo..", "..obbbbbbbbo....", "...obbbbbbo.....", "....oooooo......", "................"]}, "alien": {"name": "Zib the Alien", "lid": "b", "sway": 2, "pal": {"o": "#1f2a24", "b": "#9be36d", "h": "#c9f5a8", "e": "#151a24", "m": "#1f2a24", "d": "#7a6cf0", "a": "#ff5fd2", "s": "#5fae4a", "c": "#f2a7a0"}, "grid": ["...a........a...", "....s......s....", ".....oooooo.....", "....obbbbbbo....", "...obhbbbbbbo...", "..obhbbbbbbbbo..", "..obeeebbeeebo..", "..obeeebbeeebo..", "..obceebbeecbo..", "...obbbmmbbbo...", "....obbbbbbo....", "...ooddddddoo...", "..ododdddddodo..", "..oo.oddddo.oo..", ".....oo..oo.....", "................"]}, "computer": {"name": "Byte the Computer", "lid": "g", "sway": 0, "pal": {"o": "#3a3530", "s": "#d9d2c3", "g": "#123b2a", "h": "#2f6b50", "e": "#5cff9d", "m": "#5cff9d", "a": "#ff6b6b", "k": "#9b9484"}, "grid": ["................", "..oooooooooooo..", "..osssssssssso..", "..oshgggggggso..", "..osgeggggegso..", "..osgeggggegso..", ".oosggggggggsoo.", "o.osgggmmgggso.o", "..osggggggggso..", "..osssssssssso..", "..osssssakssso..", "..oooooooooooo..", "....oo....oo....", "....oo....oo....", "...ooo....ooo...", "................"]}, "bunny": {"name": "Mochi the Bunny", "lid": "b", "sway": 4, "pal": {"o": "#5a4a52", "b": "#f4eef0", "h": "#ffffff", "p": "#f7b6c8", "e": "#3a2e35", "c": "#f7a8b8", "m": "#3a2e35", "w": "#fffafc"}, "grid": ["....oo....oo....", "...obpo..opbo...", "...obpo..opbo...", "...obpo..opbo...", "..oobboooobboo..", "..obbbbbbbbbbo..", ".obhbbbbbbbbbbo.", ".obbbebbbbebbbo.", ".obbbebbbbebbbo.", ".obccbbmmbbccbo.", ".obbbbbbbbbbbbo.", "..obbwwwwwwbbo..", "..obwwwwwwwwbo..", "..obbwwwwwwbbo..", "...oobbbbbboo...", "....oooooooo...."]}, "fox": {"name": "Ember the Fox", "lid": "b", "sway": 5, "pal": {"o": "#4a2a1c", "b": "#f08a3c", "k": "#3b2a20", "w": "#fff4e6", "e": "#2a1a12", "m": "#2a1a12"}, "grid": ["................", "..o..........o..", "..oo........oo..", "..oko......oko..", "..okbo....obko..", "..obbboooobbbo..", ".obbbbbbbbbbbbo.", ".obbebbbbbbebbo.", ".obbebbbbbbebbo.", "obwwwbbbbbbwwwbo", ".owwwwwmmwwwwwo.", "..owwwwwwwwwwo..", "...oowwwwwwoo...", "....obbbbbbo....", "...obbbbbbbbo...", "...oooooooooo..."]}, "axolotl": {"name": "Lumi the Axolotl", "lid": "b", "sway": 0, "pal": {"o": "#7a3e5a", "b": "#ffc2d8", "h": "#ffe4ee", "g": "#ff7aa8", "e": "#3a1e2c", "c": "#ff8fb0", "m": "#3a1e2c"}, "grid": ["................", "................", "....oooooooo....", "g.oobbbbbbbboo.g", ".gobhbbbbbbbbog.", "ggobbbbbbbbbbogg", ".gobbebbbbebbog.", "g.obbebbbbebbo.g", "..obcbbmmbbcbo..", "..obbbbbbbbbbo..", "...obbbbbbbbo...", "..obbbbbbbbbbo..", ".obbobbbbbbobbo.", ".oo.obbbbbbo.oo.", ".....oooooo.....", "................"]}, "panda": {"name": "Bao the Panda", "lid": "k", "sway": 0, "pal": {"o": "#222222", "k": "#2b2b2b", "b": "#f7f7f2", "h": "#ffffff", "e": "#ffffff", "n": "#222222", "m": "#333333", "c": "#f5b8c8"}, "grid": ["................", "..ooo......ooo..", ".okkko....okkko.", ".okkooooooookko.", "..obbbbbbbbbbo..", ".obhbbbbbbbbbbo.", ".obkkbbbbbbkkbo.", ".okkekbbbbkekko.", ".okkekbbbbkekko.", ".obkkbbnnbbkkbo.", ".obcbbbmmbbbcbo.", "..obbbbbbbbbbo..", "..okkbbbbbbkko..", ".okkkbbbbbbkkko.", "..okkooooookko..", "...oo......oo..."]}, "duck": {"name": "Puddle the Duckling", "lid": "y", "sway": 1, "pal": {"o": "#6b4a12", "y": "#ffd84a", "h": "#fff1a8", "e": "#2a1e08", "a": "#ff9a3c", "m": "#c4621a", "c": "#ffb0a0"}, "grid": ["......o.o.......", ".....oooooo.....", "....oyyyyyyo....", "...oyhyyyyyyo...", "...oyyyyyyyyo...", "...oyeyyyyeyo...", "...oyeyyyyeyo...", "...ocyaaaayco...", "...oyyammayyo...", "..ooyyyaayyyoo..", ".oyyyyyyyyyyyyo.", ".oyyyyyyyyyyyyo.", ".oyyyyyyyyyyyyo.", "..oyyyyyyyyyyo..", "...oooooooooo...", "....aa....aa...."]}, "octopus": {"name": "Inky the Octopus", "lid": "b", "sway": 0, "pal": {"o": "#3e2a5c", "b": "#b48cf0", "h": "#d8c4ff", "e": "#1e1430", "c": "#ff9fc8", "m": "#1e1430"}, "grid": ["................", ".....oooooo.....", "....obbbbbbo....", "...obhhbbbbbo...", "..obhbbbbbbbbo..", "..obbbbbbbbbbo..", "..obbebbbbebbo..", "..obbebbbbebbo..", "..obcbbmmbbcbo..", "..obbbbbbbbbbo..", ".oobbbbbbbbbboo.", ".obbobbbbbbobbo.", ".obo.obbbbo.obo.", "oo...obo.obo..oo", ".....oo...oo....", "................"]}, "dragon": {"name": "Cinder the Dragon", "lid": "b", "sway": 0, "pal": {"o": "#1e3a3a", "b": "#5cc6a8", "h": "#9ff0d6", "k": "#f5d26b", "e": "#102020", "c": "#ff9f9f", "m": "#102020", "y": "#f7e3a1", "w": "#3e8f7a"}, "grid": ["...o........o...", "...ko......ok...", "...kkooooookk...", "...obbbbbbbbo...", "..obhbbbbbbbbo..", "..obbbbbbbbbbo..", "..obbebbbbebbo..", "..obbebbbbebbo..", "..obcbbbbbbcbo..", "..obbbmmmmbbbo..", "w.oobbbbbbbboo.w", "wwobbyyyyyybboww", ".wobbyyyyyybbow.", "..obbyyyyyybbo..", "...oboooooobo...", "...oo......oo..."]}, "mushroom": {"name": "Morel the Mushroom", "lid": "b", "sway": 0, "pal": {"o": "#4a1e1e", "r": "#e8524a", "w": "#fff4ea", "b": "#f6e6cf", "e": "#2a1a12", "c": "#f2a7a0", "m": "#2a1a12"}, "grid": ["................", ".....oooooo.....", "...oorrrrrroo...", "..orwwrrrrrrro..", ".orrwwrrrrwwrro.", ".orrrrrrrrwwrro.", "orrwwrrrrrrrrrro", "oooooooooooooooo", "...obbbbbbbbo...", "...obebbbbebo...", "...obebbbbebo...", "...ocbbmmbbco...", "...obbbbbbbbo...", "...obbbbbbbbo...", "....obbbbbbo....", "....oooooooo...."]}, "hamster": {"name": "Nugget the Hamster", "lid": "b", "sway": 0, "pal": {"o": "#5a3a1e", "b": "#e8a860", "h": "#f5cf98", "p": "#f7b0b8", "w": "#fff4e4", "e": "#2a1a10", "c": "#f7a0a8", "m": "#2a1a10"}, "grid": ["................", "................", "...oo......oo...", "..opbo....obpo..", "..obboooooobbo..", ".obbbbbbbbbbbbo.", ".obhbbbbbbbbbbo.", "obbbebbbbbbebbbo", "obbbebbbbbbebbbo", "obccwwwmmwwwccbo", "obbwwwwwwwwwwbbo", ".obwwwwwwwwwwbo.", ".obbwwwwwwwwbbo.", "..obbbbbbbbbbo..", "...oppooooppo...", "................"]}, "owl": {"name": "Hoot the Owl", "lid": "w", "sway": 0, "pal": {"o": "#3a2a1e", "b": "#8a6a4a", "w": "#fff8ec", "e": "#1e140c", "a": "#f5a623", "m": "#3a2a1e", "y": "#e8d4b0"}, "grid": ["................", "..o..........o..", "..oo........oo..", "..oboooooooobo..", "..obbbbbbbbbbo..", ".obwwwbbbbwwwbo.", ".obwewbbbbwewbo.", ".obwewbaabwewbo.", ".obwwwbmmbwwwbo.", ".obbbbbbbbbbbbo.", ".obyyyyyyyyyybo.", "obbyyyyyyyyyybbo", "obbyyyyyyyyyybbo", ".obbyyyyyyyybbo.", "..oooooooooooo..", "....aa....aa...."]}, "slime": {"name": "Gloop the Slime", "lid": "b", "sway": 0, "pal": {"o": "#1e4a6a", "b": "#6ad0ff", "h": "#c8f0ff", "e": "#0e2236", "c": "#ff9fc8", "m": "#0e2236"}, "grid": ["................", "................", "................", "......oooo......", "....oobbbboo....", "...obhhbbbbbo...", "..obhbbbbbbbbo..", "..obbebbbbebbo..", ".obbbebbbbebbbo.", ".obcbbbmmbbbcbo.", ".obbbbbbbbbbbbo.", "obbbbbbbbbbbbbbo", "obbbbbbbbbbbbbbo", "obbbbbbbbbbbbbbo", ".oooooooooooooo.", "................"]}, "bee": {"name": "Buzz the Bee", "lid": "y", "sway": 2, "pal": {"o": "#2a2410", "y": "#ffd23f", "h": "#fff0a0", "k": "#2a2410", "e": "#1a160a", "c": "#ff9f8f", "m": "#1a160a", "w": "#d8f0ff"}, "grid": ["...o........o...", "....o......o....", "....oooooooo....", "...oyyyyyyyyo...", "..oyhyyyyyyyyo..", "..oyyeyyyyeyyo..", "..oyyeyyyyeyyo..", "..oycyymmyycyo..", "ww.oyyyyyyyyo.ww", "wwwokkkkkkkkowww", ".wwoyyyyyyyyoww.", "...okkkkkkkko...", "...oyyyyyyyyo...", "....okkkkkko....", ".....oooooo.....", ".......oo......."]}, "clawd": {"name": "Clawd", "lid": "b", "sway": 0, "pal": {"b": "#d97757", "e": "#1f1e1d", "m": "#1f1e1d"}, "grid": ["................", "................", "................", "................", ".bbbbbbbbbbbbbb.", ".bbbbbbbbbbbbbb.", ".bbbbbbbbbbbbbb.", "bbbebbbbbbbbebbb", "bbbebbbbbbbbebbb", "bbbbbbbbbbbbbbbb", ".bbbbbbbbbbbbbb.", ".bbbbbbbbbbbbbb.", ".bbbbbbbbbbbbbb.", ".bb.bb....bb.bb.", ".bb.bb....bb.bb.", ".bb.bb....bb.bb."]}};
+let SPR, SPRITE, PAL, EYE_ROWS, LAST_EYE_ROW, MOUTH;
+function setPet(id) {
+  SPR = SPRITES[id] || SPRITES.clawd;
+  SPRITE = SPR.grid; PAL = SPR.pal;
+  EYE_ROWS = SPRITE.map((r,i)=>r.includes('e')?i:-1).filter(i=>i>=0);
+  LAST_EYE_ROW = EYE_ROWS[EYE_ROWS.length-1];
+  MOUTH = null;
+  SPRITE.forEach((r,i)=>{ const a=r.indexOf('m'); if(a>=0 && !MOUTH) MOUTH={row:i,c0:a,c1:r.lastIndexOf('m')}; });
+  document.getElementById('petName').textContent = SPR.name;
+}
+let PX = 6;
+// Size the pet to the panel. Whole-pixel sizes keep the art crisp; 19x20 cells leave room for hops and breathing.
+function fit() {
+  PX = Math.max(1, Math.floor(Math.min(stage.clientWidth / 19, stage.clientHeight / 20)));
+  cvs.width = 19 * PX; cvs.height = 20 * PX;
+}
+new ResizeObserver(fit).observe(stage);
+fit();
+
+let mood = 'idle';         // idle | typing | sleepy | happy | stretch | calm | breathe
+let lastTyping = Date.now() - 2000; // start idle, not bouncing
+let blinkUntil = 0, nextBlink = Date.now() + 3000;
+let hopT = 0;              // hop animation start
+let breathing = null;      // {start, cycles}
+let onBreak = false;
+
+function draw(t) {
+  ctx.clearRect(0, 0, cvs.width, cvs.height);
+  const now = Date.now();
+
+  if (!breathing && !onBreak && mood !== 'happy' && mood !== 'stretch' && mood !== 'calm') {
+    const idleFor = now - lastTyping;
+    mood = idleFor < 1500 ? 'typing' : idleFor > 3 * 60 * 1000 ? 'sleepy' : 'idle';
+  }
+
+  let sx = 1, sy = 1, dy = 0, leafSway = 0;
+  if (now > nextBlink) { blinkUntil = now + 140; nextBlink = now + 2500 + Math.random() * 4000; }
+  let eyesClosed = now < blinkUntil;
+  let mouth = 'm';
+
+  if (breathing) {
+    // Box breathing: 4s in, 4s hold, 4s out, 4s hold
+    const el = (now - breathing.start) / 1000;
+    const cycle = el % 16, n = Math.floor(el / 16);
+    if (n >= breathing.cycles) { breathing = null; breathEl.textContent = ''; mood = 'happy'; say('Nice. Notice how you feel. 🌿'); setTimeout(()=> mood='idle', 4000); }
+    else {
+      let k, label;
+      if (cycle < 4) { k = cycle / 4; label = 'breathe in… ' + (4 - Math.floor(cycle)); }
+      else if (cycle < 8) { k = 1; label = 'hold… ' + (8 - Math.floor(cycle)); }
+      else if (cycle < 12) { k = 1 - (cycle - 8) / 4; label = 'breathe out… ' + (12 - Math.floor(cycle)); }
+      else { k = 0; label = 'hold… ' + (16 - Math.floor(cycle)); }
+      const e = 0.5 - Math.cos(k * Math.PI) / 2;
+      sx = 1 + e * 0.12; sy = 1 + e * 0.12;
+      eyesClosed = true;
+      breathEl.textContent = label + `  (${n + 1}/${breathing.cycles})`;
+    }
+  } else if (mood === 'typing') {
+    dy = -Math.abs(Math.sin(t / 110)) * 4; leafSway = Math.sin(t / 90) * 1.5;
+  } else if (mood === 'sleepy') {
+    eyesClosed = true; sy = 1 + Math.sin(t / 900) * 0.03; sx = 1 - Math.sin(t / 900) * 0.02;
+    if (Math.random() < 0.006) fx('💤');
+  } else if (mood === 'stretch') {
+    sy = 1 + (Math.sin(t / 500) + 1) * 0.08; sx = 1 - (Math.sin(t / 500) + 1) * 0.04; leafSway = Math.sin(t / 300) * 2;
+  } else if (mood === 'happy') {
+    dy = -Math.abs(Math.sin(t / 200)) * 6; eyesClosed = false; mouth = 'w';
+  } else {
+    dy = Math.sin(t / 700) * 1.5; leafSway = Math.sin(t / 1200) * 1;
+  }
+
+  if (hopT) {
+    const p = (now - hopT) / 450;
+    if (p >= 1) hopT = 0; else dy -= Math.sin(p * Math.PI) * 14;
+  }
+  dy *= PX / 6; leafSway *= PX / 6; // motion was tuned for 6px cells
+
+  // Any grid size is stretched to 16 cells wide; `aspect` is a cell's height/width (1 = square).
+  const rows = SPRITE.length, cols = SPRITE[0].length, unit = 16 * PX / cols;
+  const pw = unit * sx, ph = unit * (SPR.aspect || 1) * sy;
+  const w = cols * pw, h = rows * ph;
+  const ox = (cvs.width - w) / 2, oy = cvs.height - h + dy;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      let ch = SPRITE[r][c];
+      if (ch === '.') continue;
+      if (ch === 'e' && eyesClosed) ch = r === LAST_EYE_ROW && EYE_ROWS.length > 1 ? 'e' : SPR.lid;
+      if (ch === 'm' && mouth === 'w') ch = SPR.lid;
+      const x = ox + (r < SPR.sway ? leafSway : 0);
+      const x0 = Math.round(x + c * pw), y0 = Math.round(oy + r * ph);
+      ctx.fillStyle = PAL[ch];
+      ctx.fillRect(x0, y0, Math.round(x + (c + 1) * pw) - x0, Math.round(oy + (r + 1) * ph) - y0);
+    }
+  }
+  if (mouth === 'w' && MOUTH) { // open smile
+    ctx.fillStyle = PAL.m;
+    const w0 = MOUTH.c1 - MOUTH.c0 + 1;
+    ctx.fillRect(Math.round(ox + (MOUTH.c0 - 1) * pw), Math.round(oy + MOUTH.row * ph), Math.ceil(pw * (w0 + 2)), Math.ceil(ph * 0.6));
+    ctx.fillRect(Math.round(ox + MOUTH.c0 * pw), Math.round(oy + (MOUTH.row + 0.6) * ph), Math.ceil(pw * w0), Math.ceil(ph * 0.6));
+  }
+  requestAnimationFrame(draw);
+}
+
+let bubbleTimer;
+function say(text, ms = 9000) {
+  bubble.textContent = text;
+  bubble.classList.add('show');
+  clearTimeout(bubbleTimer);
+  bubbleTimer = setTimeout(() => bubble.classList.remove('show'), ms);
+}
+function fx(ch) {
+  const s = document.createElement('span');
+  s.className = 'fx'; s.textContent = ch;
+  s.style.left = (45 + Math.random() * 20) + '%'; s.style.bottom = Math.round(cvs.height * 0.8) + 'px';
+  stage.appendChild(s); setTimeout(() => s.remove(), 1700);
+}
+function setMood(m, ms = 6000) {
+  mood = m;
+  if (m !== 'idle' && !onBreak) setTimeout(() => { if (mood === m && !onBreak) mood = 'idle'; }, ms);
+}
+function startBreathing(cycles = 4) {
+  breathing = { start: Date.now(), cycles };
+  say('Follow me: in through the nose, slow out through the mouth.', 5000);
+}
+
+window.addEventListener('message', (e) => {
+  const m = e.data;
+  if (m.type === 'typing') { lastTyping = Date.now(); if (Math.random() < 0.04) fx('✨'); }
+  else if (m.type === 'saved') { hopT = Date.now(); if (Math.random() < 0.3) fx('💚'); }
+  else if (m.type === 'say') { say(m.text); if (m.mood) setMood(m.mood); }
+  else if (m.type === 'mood') setMood(m.mood, 15000);
+  else if (m.type === 'pet') setPet(m.id);
+  else if (m.type === 'breathe') startBreathing(m.cycles);
+  else if (m.type === 'stats') {
+    document.getElementById('focus').textContent = m.focus;
+    document.getElementById('today').textContent = m.today;
+    document.getElementById('breaks').textContent = m.breaks;
+    onBreak = m.onBreak;
+    const btn = document.getElementById('btnBreak');
+    if (onBreak) { mood = 'stretch'; btn.title = 'End break'; btn.textContent = `⏎ ${Math.floor(m.breakLeft/60)}:${String(m.breakLeft%60).padStart(2,'0')}`; }
+    else { btn.title = 'Take a break'; btn.innerHTML = '☕<span class="lbl"> Break</span>'; }
+  }
+});
+
+document.getElementById('btnBreathe').onclick = () => startBreathing(4);
+document.getElementById('btnBreak').onclick = () => vscode.postMessage({ type: onBreak ? 'endBreak' : 'startBreak' });
+cvs.onclick = () => { hopT = Date.now(); fx('💚'); };
+cvs.ondblclick = () => vscode.postMessage({ type: 'choosePet' });
+cvs.title = 'Click to pet · double-click to change pet';
+
+document.getElementById('petName').onclick = () => vscode.postMessage({ type: 'choosePet' });
+setPet('clawd');
+requestAnimationFrame(draw);
+vscode.postMessage({ type: 'ready' });
+</script>
+</body>
+</html>
