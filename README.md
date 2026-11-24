@@ -52,14 +52,16 @@ Sprig the Sprout is the default, with Clawd next in the list. Change pets with *
 
 ## Install
 
-Sprig isn't on the Marketplace yet. Install it from the latest release:
+Sprig is distributed only here on GitHub. It isn't on the VS Code Marketplace or Open VSX.
 
 1. **[Download sprig.vsix](https://github.com/sameetvipat/sprig/releases/latest/download/sprig.vsix)** (always the latest version). Older versions are on the [releases page](https://github.com/sameetvipat/sprig/releases).
 2. In VS Code, open Extensions, click **`…`** at the top, choose **Install from VSIX…**, and pick the file.
    Or from a terminal: `code --install-extension sprig.vsix`
 3. Run **Developer: Reload Window**. Sprig appears in the Explorer sidebar.
 
-To update, install the newer `.vsix` the same way.
+Editors built on VS Code, such as Cursor and VSCodium, install the same file through their own **Install from VSIX…** option.
+
+**Updating:** because Sprig doesn't come from a store, your editor won't update it automatically. To hear about new versions, click **Watch → Custom → Releases** at the top of this repo, then install the new `sprig.vsix` the same way. Your settings, journal and stats are kept.
 
 ### Build from source
 
